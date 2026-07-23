@@ -61,9 +61,13 @@ The investigation identified a single compromised host:
 ## 1. Query Volume Analysis
 
 spl
+
 index=main sourcetype=dns_zeek
+
 | rex field=_raw "^(?<ts>\S+)\t(?<uid>\S+)\t(?<src_ip>\S+)\t(?<src_port>\S+)\t(?<dest_ip>\S+)\t(?<dest_port>\S+)\t(?<proto>\S+)\t(?<trans_id>\S+)\t(?<query>\S+)\t(?<qclass>\S+)\t(?<qclass_name>\S+)\t(?<qtype>\S+)\t(?<qtype_name>\S+)\t(?<rcode>\S+)\t(?<rcode_name>\S+)"
+
 | stats count by src_ip
+
 | sort -count
 
 ### Finding
