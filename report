@@ -1,0 +1,255 @@
+# DNS Threat Hunt: Detecting DNS Tunneling via Splunk
+
+## Overview
+
+## Scope
+
+This investigation analyzed approximately 422,000 DNS events collected from a Zeek DNS log dataset using Splunk Enterprise. The objective was to identify evidence of DNS-based command-and-control (C2), DNS tunneling, beaconing, or Domain Generation Algorithm (DGA) activity.
+
+Please note that this investigation uses a historical Zeek DNS dataset captured in March 2012. Some NXDOMAIN results are expected due to services that have since been retired or renamed.
+
+
+| Item | Value |
+|------|-------|
+| **Platform** | Splunk Enterprise |
+| **Language** | SPL |
+| **Data Source** | Zeek DNS Logs (`dns.log.gz`) |
+| **Dataset Size** | ~422,000 DNS Events |
+| **Investigation Type** | DNS Threat Hunting |
+
+
+
+# Executive Summary
+
+A proactive DNS threat hunt was conducted to identify evidence of:
+
+- DNS tunneling
+- Command-and-Control (C2) communications
+- Domain Generation Algorithm (DGA) activity
+- DNS beaconing
+
+Four independent hunting techniques were performed:
+
+| Hunt | Result |
+|------|--------|
+| Query Volume Analysis | Benign |
+| NXDOMAIN Analysis | Benign |
+| Beaconing Analysis | Benign |
+| Long Query Analysis | **Malicious** |
+
+The investigation identified a single compromised host:
+
+- **Host:** `192.168.204.71`
+- **Domain:** `rssfeeds.com`
+- **Activity:** DNS tunneling / DNS-based C2
+
+
+
+# Methodology
+
+| Hunt | Objective |
+|------|-----------|
+| Query Volume | Identify unusually active DNS clients |
+| NXDOMAIN Analysis | Detect DGA-like failed lookups |
+| Beaconing Analysis | Detect periodic DNS communication |
+| Long Query Analysis | Detect encoded DNS tunneling |
+
+
+
+# Hunt Results
+
+## 1. Query Volume Analysis
+
+### Finding
+
+Host:
+
+```
+10.10.117.210
+```
+
+generated significantly more DNS traffic than any other system.
+
+### Investigation
+
+Review of queried domains showed only legitimate services including:
+
+- Microsoft
+- Google
+- Symantec
+- Apple
+- Windows Update
+
+### Verdict
+
+**Benign**
+
+The system is consistent with a DNS resolver or gateway rather than malicious activity.
+
+
+
+## 2. NXDOMAIN Analysis
+
+### Finding
+
+Highest number of failed lookups:
+
+```
+192.168.202.103
+```
+
+### Investigation
+
+Failed lookups consisted of legitimate domains such as:
+
+- api.twitter.com
+- api.facebook.com
+- one.ubuntu.com
+- versioncheck.addons.mozilla.org
+
+These failures are consistent with the age of the dataset rather than DGA activity.
+
+### Verdict
+
+**Benign**
+
+No evidence of algorithmically generated domains.
+
+
+
+## 3. Beaconing Analysis
+
+### Finding
+
+Multiple domains displayed regular hourly query intervals.
+
+### Investigation
+
+Observed traffic corresponded to legitimate services including:
+
+- Adobe updates
+- Microsoft CEIP telemetry
+- Bonjour/DNS-SD discovery
+- Reverse DNS lookups
+
+### Verdict
+
+**Benign**
+
+No malicious beaconing identified.
+
+
+
+## 4. Long Query Analysis (DNS Tunneling)
+
+### Finding
+
+One host generated repeated long, high-entropy DNS queries.
+
+**Source Host**
+
+```
+192.168.204.71
+```
+
+**Destination**
+
+```
+auth.rssfeeds.com
+connect.rssfeeds.com
+```
+
+Queries consisted of random-looking encoded subdomains using **TXT** records.
+
+### Indicators
+
+- High-entropy subdomains
+- TXT record lookups
+- Unique subdomain per request
+- Consistent 59–61 second intervals
+- Successful `NOERROR` responses
+- Repeated `connect` → `auth` communication pattern
+
+### Scope Validation
+
+Another host appeared during wildcard searching:
+
+```
+192.168.202.106
+```
+
+Further investigation confirmed it was communicating with:
+
+```
+rssfeeds.usatoday.com
+```
+
+using normal A record lookups.
+
+This was ruled out as a false positive.
+
+### Verdict
+
+**Malicious**
+
+Evidence is consistent with DNS tunneling and DNS-based command-and-control communication.
+
+
+
+# Final Assessment
+
+The investigation concludes that:
+
+- **Host:** `192.168.204.71`
+- **Status:** Compromised
+- **Technique:** DNS Tunneling / DNS C2
+- **Infrastructure:** `rssfeeds.com`
+
+The observed behavior is automated and consistent with malware rather than user activity.
+
+
+
+# MITRE ATT&CK Mapping
+
+| Technique | ID |
+|-----------|----|
+| Application Layer Protocol: DNS | T1071.004 |
+| Non-Standard Encoding | T1132 |
+| Exfiltration Over Alternative Protocol | T1048.003 |
+
+
+
+# Indicators of Compromise
+
+| Indicator | Value |
+|-----------|-------|
+| Compromised Host | `192.168.204.71` |
+| Domain | `rssfeeds.com` |
+| Subdomains | `auth.rssfeeds.com`, `connect.rssfeeds.com` |
+| Query Type | `TXT` |
+| Beacon Interval | ~60 seconds |
+
+
+
+# Recommendations
+
+- Isolate `192.168.204.71`
+- Block `rssfeeds.com` and all subdomains
+- Acquire memory and disk images for forensic analysis
+- Review authentication and endpoint logs for lateral movement
+- Escalate to Incident Response
+- Reimage the compromised host after forensic acquisition
+
+# Conclusion
+
+Three independent hunting techniques produced explainable, legitimate DNS activity.
+
+The long-query analysis identified a single host exhibiting multiple indicators of DNS tunneling:
+
+- Encoded TXT queries
+- High-entropy subdomains
+- Regular beacon intervals
+- Successful communication with live C2 infrastructure
+
+Based on these findings, `192.168.204.71` is assessed as compromised and communicating with attacker-controlled infrastructure via DNS.
+````
