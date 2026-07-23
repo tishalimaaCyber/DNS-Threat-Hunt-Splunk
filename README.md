@@ -33,7 +33,3 @@ One compromised host was identified communicating with `rssfeeds.com` using DNS 
 - T1071.004
 - T1132
 - T1048.003
-
-## Report
-
-See:
