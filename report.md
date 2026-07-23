@@ -60,6 +60,8 @@ The investigation identified a single compromised host:
 
 ## 1. Query Volume Analysis
 
+**SEARCH:**
+
 spl
 
 index=main sourcetype=dns_zeek
@@ -82,33 +84,36 @@ generated significantly more DNS traffic than any other system.
 
 ### Investigation
 
-Follow-up: Reviewed the actual domains queried by this host:
+Reviewed the actual domains queried by this host:
+
+**SEARCH:**
 
 spl
 | search src_ip="10.10.117.210"
 | stats count by query
 | sort -count
 
-Findings: 
-
 All top domains were well-known legitimate services — teredo.ipv6.microsoft.com, tools.google.com, stats.norton.com, liveupdate.symantecliveupdate.com, time.apple.com, www.download.windowsupdate.com. This is consistent with a DNS resolver/gateway machine serving normal endpoint traffic (antivirus check-ins, OS updates, browser services).
 
-
 ### Verdict
-
-**Benign**
-
-The system is consistent with a DNS resolver or gateway rather than malicious activity.
+Benign - The system is consistent with a DNS resolver or gateway rather than malicious activity.
 
 
 
 ## 2. NXDOMAIN Analysis
 
+**SEARCH**
+
 spl
+
 index=main sourcetype=dns_zeek
+
 | rex field=_raw "^(?<ts>\S+)\t(?<uid>\S+)\t(?<src_ip>\S+)\t(?<src_port>\S+)\t(?<dest_ip>\S+)\t(?<dest_port>\S+)\t(?<proto>\S+)\t(?<trans_id>\S+)\t(?<query>\S+)\t(?<qclass>\S+)\t(?<qclass_name>\S+)\t(?<qtype>\S+)\t(?<qtype_name>\S+)\t(?<rcode>\S+)\t(?<rcode_name>\S+)"
+
 | search rcode_name="NXDOMAIN"
+
 | stats count by src_ip
+
 | sort -count
 
 ### Finding
@@ -117,61 +122,81 @@ Result: 49,923 total NXDOMAIN events across 87 unique hosts. Top host: 192.168.2
 
 ### Investigation
 
-Follow-up: 
-
 Reviewed the specific domains this host failed to resolve:
 
+**SEARCH**
+
 spl
+
 | search src_ip="192.168.202.103" rcode_name="NXDOMAIN"
+
 | stats count by query
+
 | sort -count
 
 Findings:
 
 All failed domains corresponded to recognizable, legitimate services — api.twitter.com, api.facebook.com, one.ubuntu.com (Ubuntu One, a discontinued cloud service), versioncheck.addons.mozilla.org, www.splunk.com. No randomized or algorithmically-generated domain patterns were observed. Failures are attributable to the age of the dataset (services decommissioned or restructured since 2012), not malicious DGA activity.
 
-Verdict: These failures are consistent with the age of the dataset rather than DGA activity. 
+##Verdict: 
+
+Benign - These failures are consistent with the age of the dataset rather than DGA activity. 
 
 
 ## 3. Beaconing Analysis
 
+**SEARCH:**
+
 spl
+
 index=main sourcetype=dns_zeek
+
 | rex field=_raw "^(?<ts>\S+)\t(?<uid>\S+)\t(?<src_ip>\S+)\t(?<src_port>\S+)\t(?<dest_ip>\S+)\t(?<dest_port>\S+)\t(?<proto>\S+)\t(?<trans_id>\S+)\t(?<query>\S+)\t(?<qclass>\S+)\t(?<qclass_name>\S+)\t(?<qtype>\S+)\t(?<qtype_name>\S+)\t(?<rcode>\S+)\t(?<rcode_name>\S+)"
+
 | eval real_time=tonumber(ts)
+
 | bin real_time span=1h
+
 | stats count by src_ip, query, real_time
+
 | eventstats avg(count) as avg_count stdev(count) as stdev_count count as num_buckets by src_ip, query
+
 | where num_buckets > 3 AND stdev_count < 2
+
 | sort -avg_count
+
 
 ### Finding
 
 2,460 host/domains displayed regular hourly query intervals.
 
 ### Investigation
+| Domain Pattern | Identified As | Verdict |
+|----------------|---------------|---------|
+| `armmf.adobe.com` | Adobe Application Manager update check-in |  Benign |
+| `1.1.168.192.in-addr.arpa` | Reverse DNS lookup for local gateway (`192.168.1.1`) |  Benign |
+| `G.CEIPMSN.COM` | Microsoft Customer Experience Improvement Program (CEIP) telemetry |  Benign |
+| `dr._dns-sd._udp...` / `lb._dns-sd._udp...` | Bonjour/DNS-SD local network service discovery |  Benign |
 
-Findings, by category:
-
-Domain Pattern	|Identified As	Verdict
-armmf.adobe.com	|Adobe Application Manager update check-in	Benign
-1.1.168.192.in-addr.arpa |	Reverse DNS lookup for local gateway (192.168.1.1)	Benign
-G.CEIPMSN.COM	| Microsoft Customer Experience Improvement Program telemetry	Benign
-dr._dns-sd._udp... / lb._dns-sd._udp...	|Bonjour/DNS-SD local network service discovery	Benign
-
-Verdict: Benign — all regular check-in patterns traced to known legitimate software and protocols.
-
-No malicious beaconing identified.
+Verdict: All regular check-in patterns traced to known legitimate software and protocols. No malicious beaconing identified.
 
 
 ## 4. Long Query Analysis (DNS Tunneling)
 
+**SEARCH:** 
+
 spl
+
 index=main sourcetype=dns_zeek
+
 | rex field=_raw "^(?<ts>\S+)\t(?<uid>\S+)\t(?<src_ip>\S+)\t(?<src_port>\S+)\t(?<dest_ip>\S+)\t(?<dest_port>\S+)\t(?<proto>\S+)\t(?<trans_id>\S+)\t(?<query>\S+)\t(?<qclass>\S+)\t(?<qclass_name>\S+)\t(?<qtype>\S+)\t(?<qtype_name>\S+)\t(?<rcode>\S+)\t(?<rcode_name>\S+)"
+
 | eval qlen=len(query)
+
 | stats max(qlen) as max_len count by src_ip, query
+
 | where max_len > 60
+
 | sort -max_len
 
 ### Finding
@@ -219,6 +244,7 @@ rssfeeds.usatoday.com
 using normal A record lookups.
 
 This was ruled out as a false positive.
+
 
 ### Verdict
 
