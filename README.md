@@ -14,7 +14,6 @@ This project documents a DNS threat hunt performed against Zeek DNS logs using S
 - SPL (Search Processing Language)
 - Zeek DNS Logs (`dns.log.gz`)
 
-
 ## Findings
 
 Four threat hunts were performed:
@@ -28,8 +27,6 @@ Four threat hunts were performed:
 
 One compromised host was identified: **`192.168.204.71`**, communicating with **`rssfeeds.com`** using DNS TXT records consistent with DNS tunneling / command-and-control (C2) activity.
 
-
-
 ## MITRE ATT&CK Mapping
 
 | Technique | ID |
@@ -37,8 +34,6 @@ One compromised host was identified: **`192.168.204.71`**, communicating with **
 | Application Layer Protocol: DNS | T1071.004 |
 | Non-Standard Encoding | T1132 |
 | Exfiltration Over Alternative Protocol | T1048.003 |
-
-
 └── evidence/
     └── (Splunk screenshots)
 ```
