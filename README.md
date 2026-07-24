@@ -1,7 +1,7 @@
 # DNS Threat Hunt using Splunk
 
 ## Overview
-This project documents a DNS threat hunt performed against Zeek DNS logs using Splunk. The investigation analyzed -422,000 DNS events to identify signs of malicious network activity.
+This project documents a DNS threat hunt performed against Zeek DNS logs using Splunk. The investigation analyzed 422,000 DNS events to identify signs of malicious network activity.
 
 ## Objectives
 - Detect abnormal DNS activity
