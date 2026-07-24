@@ -189,7 +189,6 @@ The observed behavior is automated and consistent with malware rather than user 
 |---|---|
 | Application Layer Protocol: DNS | T1071.004 |
 | Non-Standard Encoding | T1132 |
-| Exfiltration Over Alternative Protocol | T1048.003 |
 
 
 
